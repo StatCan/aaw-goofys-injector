@@ -157,7 +157,7 @@ func (s *server) mutate(request v1beta1.AdmissionRequest) (v1beta1.AdmissionResp
 	profile := cleanName(pod.Namespace)
 
 	// If we have a notebook, then lets run the logic
-	if _, ok := pod.ObjectMeta.Labels["notebook-name"]; ok {
+	if _, ok := (pod.ObjectMeta.Labels["notebook-name"]) || (pod.ObjectMeta.Labels["workflows.argoproj.io/workflow"]); ok {
 		patches = append(patches, s.addBoathouseInstance("minimal-minio-tenant1", "minio_minimal_tenant1", "https://minimal-tenant1-minio.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/minimal-tenant1")...)
 		patches = append(patches, s.addBoathouseInstance("premium-minio-tenant1", "minio_premium_tenant1", "https://premium-tenant1-minio.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/premium-tenant1")...)
 		patches = append(patches, s.addBoathouseInstance("premium-minio-tenant-1", "minio_premium_tenant_1", "https://minio-premium-tenant-1.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/premium-tenant-1")...)
