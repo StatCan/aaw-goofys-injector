@@ -154,7 +154,7 @@ func (s *server) mutate(request v1beta1.AdmissionRequest) (v1beta1.AdmissionResp
 
 	log.Printf("Check pod for notebook %s/%s", pod.Namespace, pod.Name)
 
-	// Only inject custom environment variables into notebook pods (condition: has notebook-name label)
+	// Only inject when matching label
 	inject := false
 
 	profile := cleanName(pod.Namespace)
