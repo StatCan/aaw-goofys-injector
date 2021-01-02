@@ -58,7 +58,7 @@ func (s *server) addMount(name, accessKey, secretKey, endpoint, region, bucket, 
 	return patches
 }
 
-func (s *server) addBoathouseMount(name, vaultPath, endpoint, region, bucket, mountPath string) []map[string]interface{} {
+func (s *server) addBoathouseMount(name, vaultPath, endpoint, region, bucket, mountPath string, containerIndex int) []map[string]interface{} {
 	patches := make([]map[string]interface{}, 0)
 
 	// Add volume definition
@@ -87,7 +87,7 @@ func (s *server) addBoathouseMount(name, vaultPath, endpoint, region, bucket, mo
 	// Add VolumeMount
 	patches = append(patches, map[string]interface{}{
 		"op":   "add",
-		"path": "/spec/containers/0/volumeMounts/-",
+		"path": fmt.Sprintf("/spec/containers/%d/volumeMounts/-", containerIndex),
 		"value": v1.VolumeMount{
 			Name:      name,
 			MountPath: mountPath,
@@ -119,16 +119,16 @@ func (s *server) addInstance(instance, mount, endpoint, region, profile, base st
 	return patches
 }
 
-func (s *server) addBoathouseInstance(instance, mount, endpoint, region, profile, base string) []map[string]interface{} {
+func (s *server) addBoathouseInstance(instance, mount, endpoint, region, profile, base string, containerIndex int) []map[string]interface{} {
 	patches := make([]map[string]interface{}, 0)
 
 	vaultPath := fmt.Sprintf("%s/keys/profile-%s", mount, profile)
 
 	// Mount private
-	patches = append(patches, s.addBoathouseMount(fmt.Sprintf("%s-private", instance), vaultPath, endpoint, region, profile, path.Join(base, "private"))...)
+	patches = append(patches, s.addBoathouseMount(fmt.Sprintf("%s-private", instance), vaultPath, endpoint, region, profile, path.Join(base, "private"), containerIndex)...)
 
 	// Mount shared
-	patches = append(patches, s.addBoathouseMount(fmt.Sprintf("%s-shared", instance), vaultPath, endpoint, region, "shared", path.Join(base, "shared"))...)
+	patches = append(patches, s.addBoathouseMount(fmt.Sprintf("%s-shared", instance), vaultPath, endpoint, region, "shared", path.Join(base, "shared"), containerIndex)...)
 
 	return patches
 }
@@ -156,24 +156,27 @@ func (s *server) mutate(request v1beta1.AdmissionRequest) (v1beta1.AdmissionResp
 
 	// Only inject when matching label
 	inject := false
+	containerIndex := 0
 
 	profile := cleanName(pod.Namespace)
 
 	// If we have a notebook, then lets run the logic
 	if _, ok := pod.ObjectMeta.Labels["notebook-name"]; ok {
 		inject = true
+		containerIndex = 0
 	}
 
 	// If we have a Argo workflow, then lets run the logic
 	if _, ok := pod.ObjectMeta.Labels["workflows.argoproj.io/workflow"]; ok {
 		inject = true
+		containerIndex = 1
 	}
 
 	if inject {
-		patches = append(patches, s.addBoathouseInstance("minimal-minio-tenant1", "minio_minimal_tenant1", "https://minimal-tenant1-minio.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/minimal-tenant1")...)
-		patches = append(patches, s.addBoathouseInstance("premium-minio-tenant1", "minio_premium_tenant1", "https://premium-tenant1-minio.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/premium-tenant1")...)
-		patches = append(patches, s.addBoathouseInstance("premium-minio-tenant-1", "minio_premium_tenant_1", "https://minio-premium-tenant-1.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/premium-tenant-1")...)
-		patches = append(patches, s.addBoathouseInstance("standard-minio-tenant-1", "minio_standard_tenant_1", "https://minio-standard-tenant-1.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/standard-tenant-1")...)
+		patches = append(patches, s.addBoathouseInstance("minimal-minio-tenant1", "minio_minimal_tenant1", "https://minimal-tenant1-minio.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/minimal-tenant1", containerIndex)...)
+		patches = append(patches, s.addBoathouseInstance("premium-minio-tenant1", "minio_premium_tenant1", "https://premium-tenant1-minio.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/premium-tenant1", containerIndex)...)
+		patches = append(patches, s.addBoathouseInstance("premium-minio-tenant-1", "minio_premium_tenant_1", "https://minio-premium-tenant-1.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/premium-tenant-1", containerIndex)...)
+		patches = append(patches, s.addBoathouseInstance("standard-minio-tenant-1", "minio_standard_tenant_1", "https://minio-standard-tenant-1.covid.cloud.statcan.ca", defaultRegion, profile, "/home/jovyan/minio/standard-tenant-1", containerIndex)...)
 
 		response.AuditAnnotations = map[string]string{
 			"goofys-injector": "Added MinIO volume mounts",
