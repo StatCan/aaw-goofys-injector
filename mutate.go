@@ -167,7 +167,6 @@ func (s *server) mutate(request v1beta1.AdmissionRequest) (v1beta1.AdmissionResp
 	// If we have a Argo workflow, then lets run the logic
 	if _, ok := pod.ObjectMeta.Labels["workflows.argoproj.io/workflow"]; ok {
 		inject = true
-
 	}
 
 	if inject {
