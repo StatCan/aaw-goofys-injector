@@ -160,16 +160,17 @@ func (s *server) mutate(request v1beta1.AdmissionRequest) (v1beta1.AdmissionResp
 
 	profile := cleanName(pod.Namespace)
 
-	// If we have a notebook, then lets run the logic
-	if _, ok := pod.ObjectMeta.Labels["notebook-name"]; ok {
-		inject = true
-		containerIndex = 0
+	// If we have the right annotations
+	if val, ok := pod.ObjectMeta.Annotations["data.statcan.gc.ca/inject-boathouse"]; ok {
+		bval, err := strconv.ParseBool(val)
+		if err != nil {
+			return response, fmt.Errorf("unable to decode data.statcan.gc.ca/boathouse-inject annotation %w", err)
+		}
+		inject = bval	
 	}
 
 	// If we have a Argo workflow, then lets run the logic
 	if _, ok := pod.ObjectMeta.Labels["workflows.argoproj.io/workflow"]; ok {
-		inject = true
-
 		// Check the name of the first container in the pod.
 		// If it's called "wait", then we want to add the mount to the second container.
 		if pod.Spec.Containers[0].Name == "wait" {
