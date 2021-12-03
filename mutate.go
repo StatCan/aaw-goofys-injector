@@ -181,25 +181,20 @@ func (s *server) mutate(request v1beta1.AdmissionRequest) (v1beta1.AdmissionResp
 		}
 	}
 
-	// TEMP: Until boathouse supports the Protected B configuration,
-	// we will not operated on pods with a Protected B classification.
-	if val, ok := pod.ObjectMeta.Labels["data.statcan.gc.ca/classification"]; ok {
-		if val == "protected-b" {
-			inject = false
-		}
-	}
-
-	if inject {
+	if val, ok := pod.ObjectMeta.Labels["data.statcan.gc.ca/classification"]; ok && inject {
 		for _, instance := range instances {
-			patches = append(patches,
-				s.addBoathouseInstance(
-					strings.Replace(instance.Name, "_", "-", -1),
-					instance.Name,
-					instance.ExternalUrl,
-					defaultRegion,
-					profile,
-					fmt.Sprintf("/home/jovyan/minio/%s", instance.Short),
-					containerIndex)...)
+			// add unclassified instances to an unclassified pod, and add protected-b instances to a protected-b pod
+			if val == instance.Classification {
+				patches = append(patches,
+					s.addBoathouseInstance(
+						strings.Replace(instance.Name, "_", "-", -1),
+						instance.Name,
+						instance.ExternalUrl,
+						defaultRegion,
+						profile,
+						fmt.Sprintf("/home/jovyan/minio/%s", instance.Short),
+						containerIndex)...)
+			}
 		}
 
 		response.AuditAnnotations = map[string]string{
